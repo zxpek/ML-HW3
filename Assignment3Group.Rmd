@@ -1,5 +1,6 @@
 ---
 title: "Assignment 3"
+author: "Group 4"
 output:
   pdf_document: default
   html_notebook: default
@@ -44,6 +45,11 @@ baseline <- sum(df$loan_status == "Fully Paid")/nrow(df)
 
 Our baseline predicted accuracy is `r baseline`. This corresponds to us predicting all loans as repaid.
 
+\pagebreak
+
+By using the default classification tree on the training data, we end up with a tree that has a single root node. We predict all the records to be Fully Paid loans. On our training set, we have an accuracy of .858, which is slightly below the baseline accuracy. However this is only due to small fluctuations in the proportion of charged off to fully paid loans in the training set compared to all of the data in total.
+
+
 ```{r}
 loanTree <- C5.0(x = train.x, y = train.y)
 loanTreetrain.results <- predict(loanTree, train)
@@ -54,7 +60,11 @@ CrossTable(train$loan_status, loanTreetrain.results,
            dnn = c('actual default', 'predicted default'))
 
 ```
-By using the default classification tree on the training data, we end up with a tree that has a single root node. We predict all the records to be Fully Paid loans. On our training set, we have an accuracy of .858, which is slightly below the baseline accuracy. However this is only due to small fluctuations in the proportion of charged off to fully paid loans in the training set compared to all of the data in total.
+
+\pagebreak
+
+When applying our decision tree to the validation set, we have an accuracy of .865 which is slightly greater than the baseline accuracy of .8596. However, yet again this is only due to random fluctuations in the proportion of charged off to fully paid loans across the validation set compared to both the training set and the entire data as a whole. We have not improved on our accuracy performance at all in the validation set by predicting all loans as fully paid.
+
 
 ```{r}
 loanTreevalidate <- predict(loanTree, val)
@@ -65,19 +75,20 @@ CrossTable(val$loan_status, loanTreevalidate,
            dnn = c('actual default', 'predicted default'))
 
 ```
-When applying our decision tree to the validation set, we have an accuracy of .865 which is slightly greater than the baseline accuracy of .8596. However, yet again this is only due to random fluctuations in the proportion of charged off to fully paid loans across the validation set compared to both the training set and the entire data as a whole. We have not improved on our accuracy performance at all in the validation set by predicting all loans as fully paid.
 
+\pagebreak
 
 ## 3) Building a cost matrix parameter to measure recall and precision rather than accuracy.
 
-We wish to minimize loans that we predicted to be paid but are actually charged off. Thus we apply a harsher penalty for loans that are in that category. We wish to minimize n_12 while also retaining high accuracy. Therefore, we try each potential cost value on that cell of the classification matrix in order to meet our desired sensitivity.
+We wish to minimize loans that we predicted to be paid but are actually charged off. Thus we apply a harsher penalty for loans that are in that category. We wish to minimize $n_{12}$ while also retaining high accuracy. Therefore, we try each potential cost value on that cell of the classification matrix in order to meet our desired sensitivity. We set the costs for correctly classifying loans as 0 and iterate through various cost values for giving credit to someone who will default.
 
-```{r message = FALSE}
+
+```{r message = FALSE, warning = FALSE}
 LoanTreeCost <- function (train.x, train.y, val.x, val.y, stepwise=0.1, Max=5) {
   s <- c()
   p <- c()
   for (i in seq(1,Max,stepwise)) {
-    loanTree <- C5.0(x = train.x, y = train.y, costs = matrix(c(1,i,1,1),2,2))
+    loanTree <- C5.0(x = train.x, y = train.y, costs = matrix(c(0,i,1,0),2,2))
     pred <- predict(loanTree,val.x)
     n11 <- sum(pred == "Charged Off" & val.y == "Charged Off")
     n12 <- sum(pred == "Fully Paid" & val.y == "Charged Off")
@@ -102,16 +113,22 @@ colnames(params) <- c("sensitivity","precision")
 params$cost <- (as.numeric(rownames(params)) - 1)* 0.1 + 1
 ```
 
+\pagebreak
+
 To find a sensitivity of 25%, we see which trial cost matrix has a sensitivity closest to 25%. 
+
 ```{r}
 sensitivity.25 <- which.min(abs(sensitivity-0.25))
 cost.25 <- 1+0.1*(sensitivity.25 - 1)
 sensitivity.25.value <- sensitivity[sensitivity.25]
 precision.25.value <- precision[sensitivity.25]
 ```
-This occurs when the cost parameter on n_12 is set to `r cost.25`. This means we penalize those misclassifications `r cost.25` times as much. Such a cost parameter gives us a sensitivity of `r sensitivity.25.value`. The percentage of lonas we would recommend to the bank for re-evaluation that were indeed charged off is `r precision.25.value`.\
+
+This occurs when the cost parameter on $n_{12}$ is set to `r cost.25`. This means we penalize giving someone a loan that actually defaults `r cost.25` times as much missing out on a profitable loan. Such a cost parameter gives us a sensitivity of `r sensitivity.25.value`. The percentage of loans we would recommend to the bank for re-evaluation that were indeed charged off is `r precision.25.value`.\
+
 
 To find a sensitivity of 40%, we see which trial cost matrix has a sensitivity closest to 40%. 
+
 ```{r}
 sensitivity.40 <- which.min(abs(sensitivity-0.4))
 cost.40 <- 1+0.1*(sensitivity.40 - 1)
@@ -119,9 +136,11 @@ sensitivity.40.value <- sensitivity[sensitivity.40]
 precision.40.value <- precision[sensitivity.40]
 
 ```
-This occurs when the cost parameter on n_12 is set to `r cost.40`. This means we penalize those misclassifications `r cost.40` times as much. Such a cost parameter gives us a sensitivity of `r sensitivity.40.value`. The percentage of lonas we would recommend to the bank for re-evaluation that were indeed charged off is `r precision.40.value`.
+
+This occurs when the cost parameter on $n_{12}$ is set to `r cost.40`. This means we penalize giving someone a loan that actually defaults `r cost.40` times as much missing out on a profitable loan. Such a cost parameter gives us a sensitivity of `r sensitivity.40.value`. The percentage of loans we would recommend to the bank for re-evaluation that were indeed charged off is `r precision.40.value`.
 
 To find a sensitivity of 50%, we see which trial cost matrix has a sensitivity closest to 50%. 
+
 ```{r}
 sensitivity.50 <- which.min(abs(sensitivity-0.50))
 cost.50 <- 1+0.1*(sensitivity.50 - 1)
@@ -129,7 +148,10 @@ sensitivity.50.value <- sensitivity[sensitivity.50]
 precision.50.value <- precision[sensitivity.50]
   
 ```
-This occurs when the cost parameter on n_12 is set to `r cost.50`. This means we penalize those misclassifications `r cost.50` times as much. Such a cost parameter gives us a sensitivity of `r sensitivity.50.value`. The percentage of lonas we would recommend to the bank for re-evaluation that were indeed charged off is `r precision.50.value`.
+
+This occurs when the cost parameter on $n_{12}$ is set to `r cost.50`. This means we penalize giving someone a loan that actually defaults `r cost.50` times as much missing out on a profitable loan. Such a cost parameter gives us a sensitivity of `r sensitivity.50.value`. The percentage of loans we would recommend to the bank for re-evaluation that were indeed charged off is `r precision.50.value`.
+
+\pagebreak
 
 ## 4) Pick a cost parameter matrix that you assess as the most appropriate for identifying loan applications that deserve further examination.
 
@@ -137,17 +159,24 @@ In general, we would want a cost matrix that has a high degree of precision (few
 
 Alternatively, we notice that the precision value decreases much slower than the sensitivity value increases. If the bank values a very high sensitivity and can afford to be less precise (have some customers that are good be filtered out), then the optimal cost parameter would be very high. We would only accept customers who we are extremely sure about being paid customers. This avenue works because the precision value decreases very slowly as we increase cost. However, the sensitivity parameter increases much faster, so we can improve our sensitivity without greatly compromising our precision. The cost parameter at this value is very high. We could use 10, or even a higher number to sensure that we have very few false negatives. In this case, the bank would really hate false negatives, where it would hate to predict a charged off customer that in reality would have been a source of revenue through a paid loan.
 
-```{r}
-ggplot(params, aes(x = cost)) + geom_line(aes(y = sensitivity, color = "Sensitivity")) + geom_line(aes(y = precision, color = "Precision"))
+```{r warning = FALSE}
+ggplot(params, aes(x = cost)) +
+  geom_line(aes(y = sensitivity, color = "Sensitivity")) + 
+  geom_line(aes(y = precision, color = "Precision")) + 
+  ggtitle("Sensitivity vs. Precision") +
+  ylab("Percentage") + 
+  xlab("Cost")
 ```
 
-Therefore, based on our analysis above and the graph displayed above, an appropriate cost parameter matrix that would be appropriate to identify loan applications that deserve further examination would be the [[1,`r cost.50`],[1,1]] matrix. This would allow us to have a good sensitivity while not compromising precision either. Our sensitivity on the validation set is around 50% and the precision is around 20%. We assess a penalty of `r cost.50` times to loans that we classify as good but later default. 
+Therefore, based on our analysis above and the graph displayed above, an appropriate cost parameter matrix that would be appropriate to identify loan applications that deserve further examination would be the [[1,`r cost.50`],[1,1]] matrix. This would allow us to have a good sensitivity while not compromising precision either. Our sensitivity on the validation set is around 50% and the precision is around 20%. We assess a penalty of `r cost.50` times to loans that we classify as good but later default. Loans we predict would default but in reality will be paid should be looked at more carefully by a loan officer.
+
+\pagebreak
 
 ## 5) Evaluate the performance of your cost parameter matrix on the test set.
 
 The resulting decision tree is as follows.
 
-```{r}
+```{r warning = FALSE}
 loanTree50 <- C5.0(x = train.x, y = train.y, costs = matrix(c(1,cost.50,1,1),2,2))
 
 predict50 <- predict(loanTree50,test)
@@ -158,4 +187,15 @@ CrossTable(test$loan_status, predict50,
            dnn = c('actual default', 'predicted default'))
 ```
 
-When evaluating the performance of the cost parameter matrix on the test data, we have an accuracy of `r sum(predict50 == test$loan_status) / nrow(test)`, which is equivalent to a misclassification rate of `r sum(predict50 != test$loan_status) / nrow(test)`. While our misclassification rate has increased when compared to our original classifier. By penalizing our predicted paid but in reality charged off customers, we decrease the number of cases where we predicted no default where the customer actually defaulted. To us, having a defaulting customer is considered `r cost.50` times more expensive than missing out on a potential new loan.
+When evaluating the performance of the cost parameter matrix on the test data, we have an accuracy of `r sum(predict50 == test$loan_status) / nrow(test)`, which is equivalent to a misclassification rate of `r sum(predict50 != test$loan_status) / nrow(test)`. While our misclassification rate has increased when compared to our original classifier, our false negatives are greatly reduced. We give out much fewer loans that will later be charged off. By penalizing our predicted paid but in reality charged off customers, we decrease the number of cases where we predicted no default where the customer actually defaulted. To us, having a defaulting customer is considered `r cost.50` times more expensive than missing out on a potential new loan. To more accurately tune this parameter, the bank would have to run some internal analysis comparing the true cost of a loan given out that is later defaulted on versus the missed profit from not extending a good loan.
+
+
+
+
+
+
+
+
+
+
+
